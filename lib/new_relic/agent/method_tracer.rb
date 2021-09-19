@@ -302,6 +302,7 @@ module NewRelic
                                      visibility: :public)
           _nr_traced_method_module.module_eval do
             define_method(method_name) do |*args, &block|
+              return unless defined?(super)
               return super(*args, &block) unless NewRelic::Agent.tl_is_execution_traced?
               scoped_metric_eval, unscoped_metrics_eval = nil, []
 
