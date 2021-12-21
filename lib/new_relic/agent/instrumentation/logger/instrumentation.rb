@@ -40,6 +40,14 @@ module NewRelic
             # methods within NewRelic::Agent, or we'll stack overflow!!
             mark_skip_instrumenting
 
+            if NewRelic::Agent.agent
+              event = NewRelic::Agent.linking_metadata
+              event["plugin.type"] = "nr-ruby-agent"
+              event["level"] = severity
+              event["message"] = formatted_message
+              NewRelic::Agent.agent.log_aggregator.record("Log", event)
+            end
+
             NewRelic::Agent.increment_metric(LINES)
             NewRelic::Agent.increment_metric(line_metric_name_by_severity(severity))
 
