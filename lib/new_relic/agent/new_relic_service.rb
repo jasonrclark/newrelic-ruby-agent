@@ -177,6 +177,17 @@ module NewRelic
           :item_count => items.size)
       end
 
+      def log_event_data(data)
+        metadata, items = data
+        payload = [{
+          common: { attributes: metadata[:linking] },
+          logs: items
+        }]
+
+        invoke_remote(:log_event_data, payload,
+          :item_count => items.size)
+      end
+
       def error_event_data(data)
         metadata, items = data
         invoke_remote(:error_event_data, [@agent_id, *data], :item_count => items.size)
