@@ -743,6 +743,31 @@ module NewRelic
       metadata
     end
 
+    # Specialized linking data for just service level fields
+    def linking_metadata_service
+      metadata = Hash.new
+      metadata[ENTITY_NAME_KEY] = config[:app_name][0]
+      metadata[ENTITY_TYPE_KEY] = ENTITY_TYPE
+      metadata[HOSTNAME_KEY] = Hostname.get
+
+      if entity_guid = config[:entity_guid]
+        metadata[ENTITY_GUID_KEY] = entity_guid
+      end
+      metadata
+    end
+
+    # Specialized linking data for just transaction, not service, level fields
+    def linking_metadata_transaction
+      metadata = Hash.new
+      if trace_id = Tracer.current_trace_id
+        metadata[TRACE_ID_KEY] = trace_id
+      end
+      if span_id = Tracer.current_span_id
+        metadata[SPAN_ID_KEY] = span_id
+      end
+      metadata
+    end
+
     # @!endgroup
 
     # @!group Manual browser monitoring configuration
