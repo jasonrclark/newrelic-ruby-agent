@@ -41,11 +41,14 @@ module NewRelic
             mark_skip_instrumenting
 
             if NewRelic::Agent.agent
-              event = NewRelic::Agent.linking_metadata
-              event["plugin.type"] = "nr-ruby-agent"
-              event["level"] = severity
-              event["message"] = formatted_message
-              NewRelic::Agent.agent.log_aggregator.record("Log", event)
+              begin
+                event = NewRelic::Agent.linking_metadata_transaction
+                event["level"] = severity
+                event["message"] = formatted_message
+                NewRelic::Agent.agent.log_event_aggregator.record(event)
+              rescue
+                # Don't block anything on account of failure at this point
+              end
             end
 
             NewRelic::Agent.increment_metric(LINES)
