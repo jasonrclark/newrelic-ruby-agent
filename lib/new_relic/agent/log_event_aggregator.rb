@@ -63,9 +63,9 @@ module NewRelic
 
       def record_supportability_metrics total_count, captured_count, dropped_count
         engine = NewRelic::Agent.instance.stats_engine
-        engine.tl_record_supportability_metric_count("Logging/Customer/Seen", total_count)
-        engine.tl_record_supportability_metric_count("Logging/Customer/Sent", captured_count)
-        engine.tl_record_supportability_metric_count("Logging/Customer/Dropped", dropped_count)
+        engine.tl_record_unscoped_metrics("Supportability/Logging/Customer/Seen") { |stats| stats.increment_count(total_count) }
+        engine.tl_record_unscoped_metrics("Supportability/Logging/Customer/Sent") { |stats| stats.increment_count(captured_count) }
+        engine.tl_record_unscoped_metrics("Supportability/Logging/Customer/Dropped") { |stats| stats.increment_count(dropped_count) }
       end
     end
   end
