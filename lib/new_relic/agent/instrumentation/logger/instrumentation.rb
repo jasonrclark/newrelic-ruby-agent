@@ -21,10 +21,6 @@ module NewRelic
         LINES = "Logging/lines".freeze
         SIZE = "Logging/size".freeze
 
-        LEVEL_KEY = "level".freeze
-        MESSAGE_KEY = "message".freeze
-        TIMESTAMP_KEY = "timestamp".freeze
-
         def line_metric_name_by_severity(severity)
           @line_metrics ||= {}
           @line_metrics[severity] ||= "Logging/lines/#{severity}".freeze
@@ -46,11 +42,7 @@ module NewRelic
 
             if NewRelic::Agent.agent
               begin
-                event = NewRelic::Agent.linking_metadata_transaction
-                event[LEVEL_KEY] = severity
-                event[MESSAGE_KEY] = formatted_message
-                event[TIMESTAMP_KEY] =  (Process.clock_gettime(Process::CLOCK_REALTIME) * 1000).to_i
-                NewRelic::Agent.agent.log_event_aggregator.record(event)
+                NewRelic::Agent.agent.log_event_aggregator.record(formatted_message, severity)
               rescue
                 # Don't block anything on account of failure at this point
               end
