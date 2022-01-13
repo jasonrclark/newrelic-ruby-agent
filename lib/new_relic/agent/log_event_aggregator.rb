@@ -9,19 +9,30 @@ module NewRelic
   module Agent
     class LogEventAggregator < EventAggregator
 
+      # Common keys
       PLUGIN_TYPE_KEY = "plugin.type".freeze
       PLUGIN_TYPE = "nr-ruby_agent".freeze
+
+      # Per-message keys
+      LEVEL_KEY = "level".freeze
+      MESSAGE_KEY = "message".freeze
+      TIMESTAMP_KEY = "timestamp".freeze
 
       named :LogEventAggregator
       capacity_key :'log_sending.max_samples_stored'
       enabled_key :'log_sending.enabled'
       buffer_class LogEventBuffer
 
-      def record(log_event)
+      def record(formatted_message, severity)
         return unless enabled?
 
+        event = NewRelic::Agent.linking_metadata_transaction
+        event[LEVEL_KEY] = severity
+        event[MESSAGE_KEY] = formatted_message
+        event[TIMESTAMP_KEY] =  Process.clock_gettime(Process::CLOCK_REALTIME)
+
         stored = @lock.synchronize do
-          @buffer.append(log_event)
+          @buffer.append(event)
         end
         stored
       end
