@@ -45,6 +45,17 @@ module NewRelic
         metadata
       end
 
+      # TODO: Because we don't have a fast harvest config key for this type
+      # yet, we piggyback on the custom event key.
+      def register_capacity_callback
+        NewRelic::Agent.config.register_callback(:'custom_insights_events.max_samples_stored') do |max_samples|
+          NewRelic::Agent.logger.debug "#{self.class.named} max_samples set to #{max_samples}"
+          @lock.synchronize do
+            @buffer.capacity = max_samples
+          end
+        end
+      end
+
       def after_harvest metadata
         linking = NewRelic::Agent.linking_metadata_service
         linking[PLUGIN_TYPE_KEY] = PLUGIN_TYPE
