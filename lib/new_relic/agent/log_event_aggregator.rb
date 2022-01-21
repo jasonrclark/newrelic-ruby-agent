@@ -18,12 +18,27 @@ module NewRelic
       MESSAGE_KEY = "message".freeze
       TIMESTAMP_KEY = "timestamp".freeze
 
+      # Metric keys
+      LINES = "Logging/lines".freeze
+
       named :LogEventAggregator
       capacity_key :'log_sending.max_samples_stored'
       enabled_key :'log_sending.enabled'
       buffer_class LogEventBuffer
 
+      def initialize(events)
+        super(events)
+        @counter_lock = Mutex.new
+        @seen = 0
+        @seen_by_severity = Hash.new(0)
+      end
+
       def record(formatted_message, severity)
+        @counter_lock.synchronize do
+          @seen += 1
+          @seen_by_severity[severity] += 1
+        end
+
         return unless enabled?
 
         event = NewRelic::Agent.linking_metadata_transaction
@@ -35,6 +50,19 @@ module NewRelic
           @buffer.append(event)
         end
         stored
+      end
+
+      def harvest!
+        record_customer_metrics()
+        super
+      end
+
+      def reset!
+        @counter_lock.synchronize do
+          @seen = 0
+          @seen_by_severity.clear
+        end
+        super
       end
 
       private
@@ -64,6 +92,31 @@ module NewRelic
         dropped_count = metadata[:seen] - metadata[:captured]
         note_dropped_events(metadata[:seen], dropped_count)
         record_supportability_metrics(metadata[:seen], metadata[:captured], dropped_count)
+      end
+
+      # To avoid paying the cost of metric recording on every line, we hold
+      # these until harvest before recording them
+      def record_customer_metrics
+        engine = NewRelic::Agent.instance.stats_engine
+
+        @counter_lock.synchronize do
+          increment(engine, LINES, @seen)
+          @seen_by_severity.each do |(severity, count)|
+            increment(engine, line_metric_name_by_severity(severity), count)
+          end
+
+          @seen = 0
+          @seen_by_severity.clear
+        end
+      end
+
+      def increment engine, name, count
+        engine.tl_record_unscoped_metrics(name) { |stats| stats.increment_count(count) }
+      end
+
+      def line_metric_name_by_severity(severity)
+        @line_metrics ||= {}
+        @line_metrics[severity] ||= "Logging/lines/#{severity}".freeze
       end
 
       def note_dropped_events total_count, dropped_count

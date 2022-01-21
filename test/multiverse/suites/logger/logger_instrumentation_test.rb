@@ -15,10 +15,12 @@ class LoggerInstrumentationTest < Minitest::Test
     end
 
     NewRelic::Agent.instance.stats_engine.reset!
+    NewRelic::Agent.instance.log_event_aggregator.reset!
   end
 
   def teardown
     NewRelic::Agent.instance.stats_engine.reset!
+    NewRelic::Agent.instance.log_event_aggregator.reset!
   end
 
   LEVELS = [
@@ -141,13 +143,16 @@ class LoggerInstrumentationTest < Minitest::Test
   end
 
   def assert_logging_metrics(label, count = 1)
+    # We count on Logger calls but actually write metrics on harvest to
+    # minimize impact in the hot path
+    NewRelic::Agent.agent.log_event_aggregator.harvest!
+
     assert_metrics_recorded_exclusive({
       "Logging/lines" => {:call_count => count},
       "Logging/lines/#{label}" => {:call_count => count},
-      "Logging/size" => {},
-      "Logging/size/#{label}" => {},
-      "Supportability/API/increment_metric" => {},
-      "Supportability/API/record_metric" => {}
+      "Supportability/Logging/Customer/Seen" => {},
+      "Supportability/Logging/Customer/Sent" => {},
+      "Supportability/Logging/Customer/Dropped" => {},
     })
   end
 end
