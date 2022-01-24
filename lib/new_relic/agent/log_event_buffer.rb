@@ -12,6 +12,9 @@ module NewRelic
           @items << event
         end
       end
+
+      def decrement_lifetime_counts_by n
+      end
     end
   end
 end
