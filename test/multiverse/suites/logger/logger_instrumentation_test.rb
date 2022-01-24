@@ -153,6 +153,7 @@ class LoggerInstrumentationTest < Minitest::Test
       "Supportability/Logging/Customer/Seen" => {},
       "Supportability/Logging/Customer/Sent" => {},
       "Supportability/Logging/Customer/Dropped" => {},
-    })
+    },
+    :ignore_filter => %r{^Supportability/API/})
   end
 end
