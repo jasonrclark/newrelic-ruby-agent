@@ -50,6 +50,8 @@ module NewRelic
           @buffer.append(event)
         end
         stored
+      rescue
+        nil
       end
 
       def harvest!
