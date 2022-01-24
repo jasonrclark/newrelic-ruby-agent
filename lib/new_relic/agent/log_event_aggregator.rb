@@ -97,21 +97,15 @@ module NewRelic
       # To avoid paying the cost of metric recording on every line, we hold
       # these until harvest before recording them
       def record_customer_metrics
-        engine = NewRelic::Agent.instance.stats_engine
-
         @counter_lock.synchronize do
-          increment(engine, LINES, @seen)
+          NewRelic::Agent.increment_metric(LINES, @seen)
           @seen_by_severity.each do |(severity, count)|
-            increment(engine, line_metric_name_by_severity(severity), count)
+            NewRelic::Agent.increment_metric(line_metric_name_by_severity(severity), count)
           end
 
           @seen = 0
           @seen_by_severity.clear
         end
-      end
-
-      def increment engine, name, count
-        engine.tl_record_unscoped_metrics(name) { |stats| stats.increment_count(count) }
       end
 
       def line_metric_name_by_severity(severity)
@@ -126,10 +120,9 @@ module NewRelic
       end
 
       def record_supportability_metrics total_count, captured_count, dropped_count
-        engine = NewRelic::Agent.instance.stats_engine
-        engine.tl_record_unscoped_metrics("Supportability/Logging/Customer/Seen") { |stats| stats.increment_count(total_count) }
-        engine.tl_record_unscoped_metrics("Supportability/Logging/Customer/Sent") { |stats| stats.increment_count(captured_count) }
-        engine.tl_record_unscoped_metrics("Supportability/Logging/Customer/Dropped") { |stats| stats.increment_count(dropped_count) }
+        NewRelic::Agent.increment_metric("Supportability/Logging/Customer/Seen", total_count)
+        NewRelic::Agent.increment_metric("Supportability/Logging/Customer/Sent", captured_count)
+        NewRelic::Agent.increment_metric("Supportability/Logging/Customer/Dropped", dropped_count)
       end
     end
   end
