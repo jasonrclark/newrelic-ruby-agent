@@ -41,10 +41,11 @@ module NewRelic
 
         return unless enabled?
 
-        event = NewRelic::Agent.linking_metadata_transaction
+        event = Hash.new
         event[LEVEL_KEY] = severity
         event[MESSAGE_KEY] = formatted_message
         event[TIMESTAMP_KEY] =  Process.clock_gettime(Process::CLOCK_REALTIME)
+        LinkingMetadata.append_trace_linking_metadata(event)
 
         stored = @lock.synchronize do
           @buffer.append(event)
@@ -87,8 +88,9 @@ module NewRelic
       end
 
       def after_harvest metadata
-        linking = NewRelic::Agent.linking_metadata_service
+        linking = Hash.new
         linking[PLUGIN_TYPE_KEY] = PLUGIN_TYPE
+        LinkingMetadata.append_service_linking_metadata(linking)
         metadata[:linking] = linking
 
         dropped_count = metadata[:seen] - metadata[:captured]
