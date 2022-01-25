@@ -636,8 +636,7 @@ module NewRelic
               transmit_span_event_data
             end
             @event_loop.on(interval_for CUSTOM_EVENT_DATA) do
-              # TODO: Change over to use log_event_data key when sent
-              # TODO: Does these have defaults otherwise
+              # TODO: Change to log_event_data when present in collector response
               transmit_log_event_data
             end
             @event_loop.on(:reset_log_once_keys) do
@@ -1167,6 +1166,7 @@ module NewRelic
             harvest_and_send_slowest_sql
             harvest_and_send_timeslice_data
             harvest_and_send_span_event_data
+            harvest_and_send_log_event_data
 
             check_for_and_handle_agent_commands
             harvest_and_send_for_agent_commands
