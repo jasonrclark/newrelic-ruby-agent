@@ -833,6 +833,10 @@ module NewRelic
         attributes.merge_custom_attributes(p)
       end
 
+      def add_log_event(event)
+        logs << event
+      end
+
       def recording_web_transaction?
         web_category?(@category)
       end

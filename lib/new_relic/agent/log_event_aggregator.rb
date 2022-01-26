@@ -51,15 +51,14 @@ module NewRelic
 
         txn = NewRelic::Agent::Transaction.tl_current
         if txn
-          return txn.logs << create_event(priority, formatted_message, severity)
-        end
-
-        stored = @lock.synchronize do
-          @buffer.append(priority: priority) do
-            create_event(priority, formatted_message, severity)
+          return txn.add_log_event(create_event(priority, formatted_message, severity))
+        else
+          return @lock.synchronize do
+            @buffer.append(priority: priority) do
+              create_event(priority, formatted_message, severity)
+            end
           end
         end
-        stored
       rescue => e
         nil
       end
