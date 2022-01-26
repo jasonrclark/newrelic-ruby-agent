@@ -32,21 +32,6 @@ module NewRelic
         @seen_by_severity = Hash.new(0)
       end
 
-      # Because our transmission format (MELT) is different than historical
-      # agent payloads, extract the munging here to keep the service focus
-      #
-      # We have to keep the aggregated payloads in a separate shape, though, to
-      # work with the priority sampling buffers
-      def self.payload_to_melt_format(data)
-        metadata, items = data
-        payload = [{
-          common: { attributes: metadata[:linking] },
-          logs: items.map(&:last)
-        }]
-
-        return [payload, items.size]
-      end
-
       def record(formatted_message, severity)
         @counter_lock.synchronize do
           @seen += 1
@@ -55,7 +40,13 @@ module NewRelic
 
         return unless enabled?
 
+        # TODO: Determine base priority by severity
         priority = 1
+
+        txn = NewRelic::Agent::Transaction.tl_current
+        if txn
+          return txn.logs << create_event(priority, formatted_message, severity)
+        end
 
         stored = @lock.synchronize do
           @buffer.append(priority: priority) do
@@ -65,6 +56,15 @@ module NewRelic
         stored
       rescue => e
         nil
+      end
+
+      def record_batch txn, logs
+        # TODO: Modify priority for transaction
+        @lock.synchronize do
+          logs.each do |log|
+            @buffer.append(event: log)
+          end
+        end
       end
 
       def create_event priority, formatted_message, severity
@@ -80,6 +80,21 @@ module NewRelic
           },
           event
         ]
+      end
+
+      # Because our transmission format (MELT) is different than historical
+      # agent payloads, extract the munging here to keep the service focus
+      #
+      # We have to keep the aggregated payloads in a separate shape, though, to
+      # work with the priority sampling buffers
+      def self.payload_to_melt_format(data)
+        metadata, items = data
+        payload = [{
+          common: { attributes: metadata[:linking] },
+          logs: items.map(&:last)
+        }]
+
+        return [payload, items.size]
       end
 
       def harvest!

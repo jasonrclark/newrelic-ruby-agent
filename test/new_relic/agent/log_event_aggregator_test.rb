@@ -11,8 +11,8 @@ module NewRelic::Agent
   class LogEventAggregatorTest < Minitest::Test
     def setup
       nr_freeze_process_time
-      events = NewRelic::Agent.instance.events
-      @aggregator = NewRelic::Agent::LogEventAggregator.new events
+      @aggregator = NewRelic::Agent.agent.log_event_aggregator
+      @aggregator.reset!
     end
 
     # TODO: Fix to use logging specific limit when wired up!
@@ -37,6 +37,22 @@ module NewRelic::Agent
       n = max_samples + 1
       n.times do |i|
         @aggregator.record("Take it to the limit", "FATAL")
+      end
+
+      metadata, results = @aggregator.harvest!
+      assert_equal(n, metadata[:seen])
+      assert_equal(max_samples, metadata[:capacity])
+      assert_equal(max_samples, metadata[:captured])
+      assert_equal(max_samples, results.size)
+    end
+
+    def test_record_in_transaction
+      max_samples = NewRelic::Agent.config[CONFIG_KEY]
+      n = max_samples + 1
+      n.times do |i|
+        in_transaction do
+          @aggregator.record("Take it to the limit", "FATAL")
+        end
       end
 
       metadata, results = @aggregator.harvest!
