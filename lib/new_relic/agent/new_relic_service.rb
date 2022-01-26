@@ -178,14 +178,8 @@ module NewRelic
       end
 
       def log_event_data(data)
-        metadata, items = data
-        payload = [{
-          common: { attributes: metadata[:linking] },
-          logs: items
-        }]
-
-        invoke_remote(:log_event_data, payload,
-          :item_count => items.size)
+        payload, size = LogEventAggregator.payload_to_melt_format(data)
+        invoke_remote(:log_event_data, payload, :item_count => size)
       end
 
       def error_event_data(data)

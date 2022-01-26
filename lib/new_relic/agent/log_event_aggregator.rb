@@ -3,7 +3,6 @@
 # See https://github.com/newrelic/newrelic-ruby-agent/blob/main/LICENSE for complete details.
 
 require 'new_relic/agent/event_aggregator'
-require 'new_relic/agent/log_event_buffer'
 
 module NewRelic
   module Agent
@@ -24,13 +23,28 @@ module NewRelic
       named :LogEventAggregator
       capacity_key :'log_sending.max_samples_stored'
       enabled_key :'log_sending.enabled'
-      buffer_class LogEventBuffer
+      buffer_class PrioritySampledBuffer
 
       def initialize(events)
         super(events)
         @counter_lock = Mutex.new
         @seen = 0
         @seen_by_severity = Hash.new(0)
+      end
+
+      # Because our transmission format (MELT) is different than historical
+      # agent payloads, extract the munging here to keep the service focus
+      #
+      # We have to keep the aggregated payloads in a separate shape, though, to
+      # work with the priority sampling buffers
+      def self.payload_to_melt_format(data)
+        metadata, items = data
+        payload = [{
+          common: { attributes: metadata[:linking] },
+          logs: items.map(&:last)
+        }]
+
+        return [payload, items.size]
       end
 
       def record(formatted_message, severity)
@@ -41,18 +55,31 @@ module NewRelic
 
         return unless enabled?
 
+        priority = 1
+
+        stored = @lock.synchronize do
+          @buffer.append(priority: priority) do
+            create_event(priority, formatted_message, severity)
+          end
+        end
+        stored
+      rescue => e
+        nil
+      end
+
+      def create_event priority, formatted_message, severity
         event = Hash.new
         event[LEVEL_KEY] = severity
         event[MESSAGE_KEY] = formatted_message
         event[TIMESTAMP_KEY] =  Process.clock_gettime(Process::CLOCK_REALTIME)
         LinkingMetadata.append_trace_linking_metadata(event)
 
-        stored = @lock.synchronize do
-          @buffer.append(event)
-        end
-        stored
-      rescue
-        nil
+        [
+          {
+            PrioritySampledBuffer::PRIORITY_KEY => priority
+          },
+          event
+        ]
       end
 
       def harvest!

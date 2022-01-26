@@ -4,7 +4,6 @@
 
 require File.expand_path(File.join(File.dirname(__FILE__), '..', '..', 'test_helper'))
 require File.expand_path(File.join(File.dirname(__FILE__), '..', 'data_container_tests'))
-require File.expand_path(File.join(File.dirname(__FILE__), '..', 'common_aggregator_tests'))
 
 require 'new_relic/agent/log_event_aggregator'
 
@@ -73,11 +72,16 @@ module NewRelic::Agent
       assert_equal(1, events.size)
       event = events.first
 
-      assert_equal({
-        'level' => "INFO",
-        'message' => message,
-        'timestamp' => t0,
-      },
+      assert_equal([
+        {
+          'priority' => 1,
+        },
+        {
+          'level' => "INFO",
+          'message' => message,
+          'timestamp' => t0,
+        }
+      ],
       event)
     end
 
@@ -98,6 +102,31 @@ module NewRelic::Agent
         },
         :ignore_filter => %r{^Supportability/API/})
       end
+    end
+
+
+    def test_basic_conversion_to_melt_format
+      log_data = [
+        {
+          seen: 0,
+          captured: 0,
+          linking: {
+            "entity.name": "Hola"
+          }
+        },
+        [
+          [{ "priority": 1}, { "message": "This is a mess" }]
+        ]
+      ]
+
+      payload, size = LogEventAggregator.payload_to_melt_format(log_data)
+      expected = [{
+        common: { attributes: { "entity.name": "Hola" } },
+        logs: [{"message": "This is a mess"}]
+      }]
+
+      assert_equal 1, size
+      assert_equal expected, payload
     end
   end
 end
