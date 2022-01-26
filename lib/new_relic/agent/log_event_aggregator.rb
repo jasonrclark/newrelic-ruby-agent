@@ -68,11 +68,11 @@ module NewRelic
       end
 
       def create_event priority, formatted_message, severity
-        event = Hash.new
-        event[LEVEL_KEY] = severity
-        event[MESSAGE_KEY] = formatted_message
-        event[TIMESTAMP_KEY] =  Process.clock_gettime(Process::CLOCK_REALTIME)
-        LinkingMetadata.append_trace_linking_metadata(event)
+        event = LinkingMetadata.append_trace_linking_metadata({
+          LEVEL_KEY => severity,
+          MESSAGE_KEY => formatted_message,
+          TIMESTAMP_KEY => Process.clock_gettime(Process::CLOCK_REALTIME)
+        })
 
         [
           {
@@ -115,8 +115,7 @@ module NewRelic
       end
 
       def after_harvest metadata
-        linking = Hash.new
-        linking[PLUGIN_TYPE_KEY] = PLUGIN_TYPE
+        linking = { PLUGIN_TYPE_KEY => PLUGIN_TYPE }
         LinkingMetadata.append_service_linking_metadata(linking)
         metadata[:linking] = linking
 

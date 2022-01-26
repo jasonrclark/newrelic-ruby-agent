@@ -23,6 +23,8 @@ module NewRelic
         if entity_guid = config[:entity_guid]
           metadata[ENTITY_GUID_KEY] = entity_guid
         end
+
+        metadata
       end
 
       def append_trace_linking_metadata metadata
@@ -31,9 +33,12 @@ module NewRelic
         if trace_id = Tracer.current_trace_id
           metadata[TRACE_ID_KEY] = trace_id
         end
+
         if span_id = Tracer.current_span_id
           metadata[SPAN_ID_KEY] = span_id
         end
+
+        metadata
       end
     end
   end
