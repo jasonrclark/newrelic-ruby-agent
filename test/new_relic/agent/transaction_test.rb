@@ -1632,5 +1632,24 @@ module NewRelic::Agent
         file_descriptors.map { |fd| IO::new(fd).close }
       end
     end
+
+    def test_batches_logs_during_transaction
+      in_transaction do
+        NewRelic::Agent.agent.log_event_aggregator.record("A message", "FATAL")
+        assert_equal 1, Transaction.tl_current.logs.size
+      end
+    end
+
+    def test_limits_batched_logs_during_transaction
+      limit = 10
+      with_config(LogEventAggregator::capacity_key => limit) do
+        in_transaction do
+          100.times do
+            NewRelic::Agent.agent.log_event_aggregator.record("A message", "FATAL")
+          end
+          assert_equal limit, Transaction.tl_current.logs.size
+        end
+      end
+    end
   end
 end

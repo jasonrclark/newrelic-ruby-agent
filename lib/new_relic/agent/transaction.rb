@@ -237,7 +237,7 @@ module NewRelic
 
         @exceptions = {}
         @metrics = TransactionMetrics.new
-        @logs = []
+        @logs = PrioritySampledBuffer.new(NewRelic::Agent.instance.log_event_aggregator.capacity)
         @guid = NewRelic::Agent::GuidGenerator.generate_guid
 
         @ignore_this_transaction = false
@@ -736,7 +736,7 @@ module NewRelic
       end
 
       def record_log_events
-        agent.log_event_aggregator.record_batch self, @logs
+        agent.log_event_aggregator.record_batch self, @logs.to_a
       end
 
       def queue_time
@@ -834,7 +834,7 @@ module NewRelic
       end
 
       def add_log_event(event)
-        logs << event
+        logs.append(event: event)
       end
 
       def recording_web_transaction?
