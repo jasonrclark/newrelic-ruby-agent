@@ -15,8 +15,7 @@ module NewRelic::Agent
       @aggregator.reset!
     end
 
-    # TODO: Fix to use logging specific limit when wired up!
-    CONFIG_KEY = :'custom_insights_events.max_samples_stored'
+    CONFIG_KEY = LogEventAggregator.capacity_key
 
     # Helpers for DataContainerTests
 
@@ -60,6 +59,67 @@ module NewRelic::Agent
       assert_equal(max_samples, metadata[:capacity])
       assert_equal(max_samples, metadata[:captured])
       assert_equal(max_samples, results.size)
+    end
+
+    def test_record_in_transaction_prioritizes_sampling
+      # There can be only one
+      with_config(CONFIG_KEY => 1) do
+        in_transaction do |txn|
+          txn.sampled = false
+          @aggregator.record("Deadly", "FATAL")
+        end
+
+        in_transaction do |txn|
+          txn.sampled = true
+          @aggregator.record("Buggy", "DEBUG")
+        end
+
+        metadata, results = @aggregator.harvest!
+
+        assert_equal(2, metadata[:seen])
+        assert_equal(1, metadata[:capacity])
+        assert_equal(1, metadata[:captured])
+        assert_equal(1, results.size)
+        assert_equal("Buggy", results.first.last["message"], "Favor sampled")
+      end
+    end
+
+    def test_record_in_transaction_prioritizes_error_transactions
+      # There can be only one
+      with_config(CONFIG_KEY => 1) do
+        in_transaction do |txn|
+          @aggregator.record("Deadly", "FATAL")
+        end
+
+        in_transaction do |txn|
+          txn.notice_error("Oops")
+          @aggregator.record("Buggy", "DEBUG")
+        end
+
+        metadata, results = @aggregator.harvest!
+
+        assert_equal(2, metadata[:seen])
+        assert_equal(1, metadata[:capacity])
+        assert_equal(1, metadata[:captured])
+        assert_equal(1, results.size)
+        assert_equal("Buggy", results.first.last["message"], "Favor errored")
+      end
+    end
+
+    def test_record_in_transaction_prioritizes_severity_when_all_else_fails
+      # There can be only one
+      with_config(CONFIG_KEY => 1) do
+        @aggregator.record("Buggy", "DEBUG")
+        @aggregator.record("Deadly", "FATAL")
+
+        metadata, results = @aggregator.harvest!
+
+        assert_equal(2, metadata[:seen])
+        assert_equal(1, metadata[:capacity])
+        assert_equal(1, metadata[:captured])
+        assert_equal(1, results.size)
+        assert_equal("Deadly", results.first.last["message"], "Favor errored")
+      end
     end
 
     def test_lowering_limit_truncates_buffer

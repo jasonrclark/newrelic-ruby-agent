@@ -3,6 +3,7 @@
 # See https://github.com/newrelic/newrelic-ruby-agent/blob/main/LICENSE for complete details.
 
 require 'new_relic/agent/event_aggregator'
+require 'new_relic/agent/log_priority'
 
 module NewRelic
   module Agent
@@ -46,8 +47,7 @@ module NewRelic
 
         return unless enabled?
 
-        # TODO: Determine base priority by severity
-        priority = 1
+        priority = LogPriority.priority_for(severity)
 
         txn = NewRelic::Agent::Transaction.tl_current
         if txn
@@ -59,12 +59,16 @@ module NewRelic
             end
           end
         end
-      rescue => e
+      rescue
         nil
       end
 
       def record_batch txn, logs
-        # TODO: Modify priority for transaction
+        # Capture our finalized priority
+        logs.each do |log|
+          log.first["priority"] = LogPriority.priority_for(log.last["level"], txn)
+        end
+
         @lock.synchronize do
           logs.each do |log|
             @buffer.append(event: log)
