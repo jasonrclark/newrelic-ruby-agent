@@ -21,7 +21,9 @@ module NewRelic
       LINES = "Logging/lines".freeze
 
       named :LogEventAggregator
-      capacity_key :'log_sending.max_samples_stored'
+      # TODO use the right value when the collector starts reporting it
+      capacity_key :'custom_insights_events.max_samples_stored'
+      #capacity_key :'log_sending.max_samples_stored'
       enabled_key :'log_sending.enabled'
       buffer_class PrioritySampledBuffer
 
@@ -30,6 +32,10 @@ module NewRelic
         @counter_lock = Mutex.new
         @seen = 0
         @seen_by_severity = Hash.new(0)
+      end
+
+      def capacity
+        @buffer.capacity
       end
 
       def record(formatted_message, severity)
@@ -118,10 +124,8 @@ module NewRelic
         metadata
       end
 
-      # TODO: Because we don't have a fast harvest config key for this type
-      # yet, we piggyback on the custom event key.
       def register_capacity_callback
-        NewRelic::Agent.config.register_callback(:'custom_insights_events.max_samples_stored') do |max_samples|
+        NewRelic::Agent.config.register_callback(self.class.capacity_key) do |max_samples|
           NewRelic::Agent.logger.debug "#{self.class.named} max_samples set to #{max_samples}"
           @lock.synchronize do
             @buffer.capacity = max_samples
