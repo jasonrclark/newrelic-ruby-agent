@@ -153,8 +153,7 @@ module MarshallingTestCases
     assert_equal event.size, 3
   end
 
-  # TODO: Enable once we deal with Resque pipe marshalling noise
-  def xtest_sends_log_events
+  def test_sends_log_events
     t0 = nr_freeze_process_time
     message = "A deadly message"
     severity = "FATAL"
