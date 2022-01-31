@@ -1640,6 +1640,19 @@ module NewRelic::Agent
       end
     end
 
+    def test_ignores_logs_when_transaction_ignored
+      in_transaction do |txn|
+        txn.ignore!
+
+        NewRelic::Agent.agent.log_event_aggregator.reset!
+        NewRelic::Agent.agent.log_event_aggregator.record("A message", "FATAL")
+        assert_equal 1, Transaction.tl_current.logs.size
+      end
+
+      _, items = NewRelic::Agent.agent.log_event_aggregator.harvest!
+      assert_empty items
+    end
+
     def test_limits_batched_logs_during_transaction
       limit = 10
       with_config(LogEventAggregator::capacity_key => limit) do
