@@ -6,7 +6,7 @@ require 'thread'
 require 'logger'
 require 'new_relic/agent/hostname'
 require 'new_relic/agent/log_once'
-require 'new_relic/agent/instrumentation/logger'
+require 'new_relic/agent/instrumentation/logger/instrumentation'
 
 module NewRelic
   module Agent
