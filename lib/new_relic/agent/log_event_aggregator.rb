@@ -150,6 +150,8 @@ module NewRelic
       # these until harvest before recording them
       def record_customer_metrics
         @counter_lock.synchronize do
+          return unless @seen > 0
+
           NewRelic::Agent.increment_metric(LINES, @seen)
           @seen_by_severity.each do |(severity, count)|
             NewRelic::Agent.increment_metric(line_metric_name_by_severity(severity), count)
@@ -172,6 +174,8 @@ module NewRelic
       end
 
       def record_supportability_metrics total_count, captured_count, dropped_count
+        return unless total_count > 0
+
         NewRelic::Agent.increment_metric("Supportability/Logging/Customer/Seen", total_count)
         NewRelic::Agent.increment_metric("Supportability/Logging/Customer/Sent", captured_count)
         NewRelic::Agent.increment_metric("Supportability/Logging/Customer/Dropped", dropped_count)
