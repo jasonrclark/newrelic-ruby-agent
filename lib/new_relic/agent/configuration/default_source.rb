@@ -1839,6 +1839,21 @@ module NewRelic
           :description => 'Specify a maximum number of custom Insights events to buffer in memory at a time.',
           :dynamic_name => true
         },
+        :'log_sending.enabled' => {
+          :default      => true,
+          :public       => true,
+          :type         => Boolean,
+          :allowed_from_server => true,
+          :description  => 'If `true`, the agent captures log records emitted by your application.'
+        },
+        :'log_sending.max_samples_stored' => {
+          :default      => 1000,
+          :public       => true,
+          :type         => Integer,
+          :allowed_from_server => true,
+          :description  => 'Specify a maximum number of log records to buffer in memory at a time.',
+          :dynamic_name => true
+        },
         :disable_grape_instrumentation => {
           :default => false,
           :public => false,
